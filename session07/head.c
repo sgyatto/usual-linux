@@ -53,7 +53,7 @@ int main(int argc, char *argv[])
             FILE *f;
             
             f = fopen(argv[i], "r");
-            if (!f) {
+            if (f == NULL) {
                 perror(argv[i]);
                 exit(1);
             }
