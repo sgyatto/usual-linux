@@ -9,9 +9,9 @@ static void do_head(FILE *f, long nlines);
 #define DEFAULT_N_LINES 10
 
 static struct option longopts[] = {
-    {"lines", required_argument, NULL, 'n'},
-    {"help", no_argument, NULL, 'h'},
-    {0, 0, 0, 0}
+	{"lines", required_argument, NULL, 'n'},
+	{"help", no_argument, NULL, 'h'},
+	{0, 0, 0, 0}
 };
 
 /*
@@ -19,61 +19,61 @@ static struct option longopts[] = {
 */
 int main(int argc, char *argv[])
 {
-    int opt;
-    long nlines = DEFAULT_N_LINES;
+	int opt;
+	long nlines = DEFAULT_N_LINES;
 
-    while ((opt = getopt_long(argc, argv, "n:", longopts, NULL)) != -1) {
-        switch (opt) {
-        case 'n':
-            nlines = atol(optarg);
-            break;
-        case 'h':
-            fprintf(stdout, "Usage: %s [-n LINES] [FILE ...]\n", argv[0]);
-            exit(0);
-        case '?':
-            fprintf(stderr, "Usage: %s [-n LINES] [FILE ...]\n", argv[0]);
-            exit(1);
-        }
-    }
-    
-    /* 
-       デバッグ用
-       printf("argc: %d\n", argc);
-       printf("optind: %d\n", optind);
-    */
+	while ((opt = getopt_long(argc, argv, "n:", longopts, NULL)) != -1) {
+		switch (opt) {
+		case 'n':
+			nlines = atol(optarg);
+			break;
+		case 'h':
+			fprintf(stdout, "Usage: %s [-n LINES] [FILE ...]\n", argv[0]);
+			exit(0);
+		case '?':
+			fprintf(stderr, "Usage: %s [-n LINES] [FILE ...]\n", argv[0]);
+			exit(1);
+		}
+	}
+	
+	/* 
+	   デバッグ用
+	   printf("argc: %d\n", argc);
+	   printf("optind: %d\n", optind);
+	*/
 
-    if (optind == argc) {
-        /* optindが存在しないはずのargvのindex値(argc)を指しているので、
-           解析する要素がないということ。 */
-        do_head(stdin, nlines);
-    } else {
-        int i;
+	if (optind == argc) {
+		/* optindが存在しないはずのargvのindex値(argc)を指しているので、
+		   解析する要素がないということ。 */
+		do_head(stdin, nlines);
+	} else {
+		int i;
 
-        for (i = optind; i < argc; i++) {
-            FILE *f;
-            
-            f = fopen(argv[i], "r");
-            if (f == NULL) {
-                perror(argv[i]);
-                exit(1);
-            }
-            do_head(f, nlines);
-            fclose(f);
-        }
-    }
-    exit(0);
+		for (i = optind; i < argc; i++) {
+			FILE *f;
+			
+			f = fopen(argv[i], "r");
+			if (f == NULL) {
+				perror(argv[i]);
+				exit(1);
+			}
+			do_head(f, nlines);
+			fclose(f);
+		}
+	}
+	exit(0);
 }
 
 static void do_head(FILE *f, long nlines)
 {
-    int c;
+	int c;
 
-    if (nlines == 0) return;
-    while ((c = getc(f)) != EOF) {
-        if (putchar(c) < 0) exit(1);
-        if (c == '\n') {
-            nlines--;
-            if (nlines == 0) return;
-        }
-    }
+	if (nlines == 0) return;
+	while ((c = getc(f)) != EOF) {
+		if (putchar(c) < 0) exit(1);
+		if (c == '\n') {
+			nlines--;
+			if (nlines == 0) return;
+		}
+	}
 }
