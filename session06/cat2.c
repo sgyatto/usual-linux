@@ -12,7 +12,7 @@ int main(int argc, char *argv[]) {
         int c;
 
         f = fopen(argv[i], "r");
-        if (!f) {
+        if (f == NULL) {
             perror(argv[i]);
             exit(1);
         }
