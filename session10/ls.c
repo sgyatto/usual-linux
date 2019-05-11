@@ -10,6 +10,7 @@ int main(int argc, char *argv[])
 	int i;
 	
 	if (argc < 2) {
+		/* この実装では引数が必須 */
 		fprintf(stderr, "%s: no arguments\n", argv[0]);
 		exit(1);
 	}
