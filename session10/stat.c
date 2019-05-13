@@ -12,6 +12,7 @@ int main(int argc, char *argv[])
 	 struct stat st;
 	
 	if (argc != 2) {
+		/* この実装では引数を1つ取る */
 		fprintf(stderr, "%s: wrong argument\n", argv[0]);
 		exit(1);
 	}
