@@ -4,12 +4,30 @@
 #include <signal.h>
 #include <errno.h>
 
+/* Data Type Definitions ************/
+
+struct HTTPHeaderField {
+	char *name;
+	char *value;
+	struct HTTPHeaderField *next;
+};
+
+struct HTTPRequest {
+	int protocol_minor_version;
+	char *method;
+	char *path;
+	struct HTTPHeaderField *header;
+	char *body;
+	long length;
+};
+
 /* Function Prototypes **************/
 
 typedef void (*sighandler_t)(int);
 static void install_signal_handlers(void);
 static void trap_signal(int sig, sighandler_t handler);
 static void signal_exit(int sig);
+static void service(FILE *in, FILE *out, char *docroot);
 static void *xmalloc(size_t sz);
 static void log_exit(char *fmt, ...);
 
@@ -45,6 +63,15 @@ static void trap_signal(int sig, sighandler_t handler)
 static void signal_exit(int sig)
 {
 	log_exit("exit by signal %d", sig);
+}
+
+static void service(FILE *in, FILE *out, char *docroot)
+{
+	struct HTTPRequest *req;
+
+	req = read_request(in);
+	respond_to(req, out, docroot);
+	free_request(req);
 }
 
 static void *xmalloc(size_t sz)
