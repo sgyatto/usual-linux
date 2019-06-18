@@ -4,6 +4,10 @@
 #include <signal.h>
 #include <errno.h>
 
+/* Constants ************************/
+
+#define MAX_REQUEST_BODY_LENGTH (1024 * 1024)
+
 /* Data Type Definitions ************/
 
 struct HTTPHeaderField {
@@ -28,6 +32,7 @@ static void install_signal_handlers(void);
 static void trap_signal(int sig, sighandler_t handler);
 static void signal_exit(int sig);
 static void service(FILE *in, FILE *out, char *docroot);
+static struct HTTPRequest *read_request(FILE *in);
 static void free_request(struct HTTPRequest *req);
 static void *xmalloc(size_t sz);
 static void log_exit(char *fmt, ...);
@@ -73,6 +78,31 @@ static void service(FILE *in, FILE *out, char *docroot)
 	req = read_request(in);
 	respond_to(req, out, docroot);
 	free_request(req);
+}
+
+static struct HTTPRequest *read_request(FILE *in)
+{
+	struct HTTPRequest *req;
+	struct HTTPHeaderField *h;
+
+	req = xmalloc(sizeof(struct HTTPRequest));
+	read_request_line(req, in);
+	req->header = NULL;
+	while (h = read_header_field(in)) {
+		h->next = req->header;
+		req->header = h;
+	}
+	req->length = content_length(req);
+	if (req->length != 0) {
+		if (req->length > MAX_REQUEST_BODY_LENGTH)
+			log_exit("request body too long");
+		req->body = xmalloc(req->length);
+		if (fread(req->body, req->length, 1, in) < 1)
+			log_exit("failed to read request body");
+	} else {
+		req->body = NULL;
+	}
+	return req;
 }
 
 static void free_request(struct HTTPRequest *req)
