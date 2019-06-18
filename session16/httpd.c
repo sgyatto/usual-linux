@@ -28,6 +28,7 @@ static void install_signal_handlers(void);
 static void trap_signal(int sig, sighandler_t handler);
 static void signal_exit(int sig);
 static void service(FILE *in, FILE *out, char *docroot);
+static void free_request(struct HTTPRequest *req);
 static void *xmalloc(size_t sz);
 static void log_exit(char *fmt, ...);
 
@@ -72,6 +73,24 @@ static void service(FILE *in, FILE *out, char *docroot)
 	req = read_request(in);
 	respond_to(req, out, docroot);
 	free_request(req);
+}
+
+static void free_request(struct HTTPRequest *req)
+{
+	struct HTTPHeaderField *h, *head;
+
+	head = req->header;
+	while (head) {
+		h = head;
+		head = h->next;
+		free(h->name);
+		free(h->value);
+		free(h);
+	}
+	free(req->method);
+	free(req->path);
+	free(req->body);
+	free(req);
 }
 
 static void *xmalloc(size_t sz)
