@@ -3,9 +3,12 @@
 #include <stdlib.h>
 #include <signal.h>
 #include <errno.h>
+#include <string.h>
+#include <ctype.h>
 
 /* Constants ************************/
 
+#define LINE_BUF_SIZE 4096
 #define MAX_REQUEST_BODY_LENGTH (1024 * 1024)
 
 /* Data Type Definitions ************/
@@ -33,6 +36,8 @@ static void trap_signal(int sig, sighandler_t handler);
 static void signal_exit(int sig);
 static void service(FILE *in, FILE *out, char *docroot);
 static struct HTTPRequest *read_request(FILE *in);
+static void read_request_line(struct HTTPRequest *req, FILE *in);
+static void upcase(char *str);
 static void free_request(struct HTTPRequest *req);
 static void *xmalloc(size_t sz);
 static void log_exit(char *fmt, ...);
@@ -103,6 +108,47 @@ static struct HTTPRequest *read_request(FILE *in)
 		req->body = NULL;
 	}
 	return req;
+}
+
+static void read_request_line(struct HTTPRequest *req, FILE *in)
+{
+	/* 無制限に読み込むべき箇所ではないので固定長 */
+	char buf[LINE_BUF_SIZE];
+	char *p, *path;
+
+	if (fgets(buf, LINE_BUF_SIZE, in) == NULL)
+		log_exit("no request line");
+
+	/* method */
+	p = strchr(buf, ' '); 	/* 初めて半角スペースが出現した箇所のポインタを返す */
+	if (p == NULL) log_exit("parse error on request line (1): %s", buf);
+	*p++ += '\0';
+	req->method = xmalloc(p - buf);
+	strcpy(req->method, buf); /* '\0'までをコピー */
+	upcase(req->method);
+
+	/* path */
+	path = p;
+	p = strchr(p, ' ');
+	if (p == NULL) log_exit("parse error on request line (2): %s", buf);
+	*p++ += '\0';
+	req->path = xmalloc(p - path);
+	strcpy(req->path, path);
+
+	/* protocol_minor_version */
+	if (strncasecmp(p, "HTTP/1.", strlen("HTTP/1.")) != 0)
+		log_exit("parse error on request line (3): %s", buf);
+	p += strlen("HTTP/1.");
+	req->protocol_minor_version = atoi(p);
+}
+
+static void upcase(char *str)
+{
+	char *p;
+
+	for (p = str; *p; p++) {
+		*p = (char)toupper((int)*p);
+	}
 }
 
 static void free_request(struct HTTPRequest *req)
