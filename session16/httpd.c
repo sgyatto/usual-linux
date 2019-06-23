@@ -52,6 +52,7 @@ static void free_request(struct HTTPRequest *req);
 static long content_length(struct HTTPRequest *req);
 static char *lookup_header_field_value(struct HTTPRequest *req, char *name);
 static struct FileInfo *get_fileinfo(char *docroot, char *urlpath);
+static char *build_fspath(char *docroot, char *urlpath);
 static void *xmalloc(size_t sz);
 static void log_exit(char *fmt, ...);
 
@@ -248,6 +249,15 @@ static struct FileInfo *get_fileinfo(char *docroot, char *urlpath)
 	info->ok = 1;
 	info->size = st.st_size;
 	return info;
+}
+
+static char *build_fspath(char *docroot, char *urlpath)
+{
+	char *path;
+
+	path = xmalloc(strlen(docroot) + 1 + strlen(urlpath) + 1);
+	sprintf(path, "%s/%s", docroot, urlpath);
+	return path;
 }
 
 static void *xmalloc(size_t sz)
