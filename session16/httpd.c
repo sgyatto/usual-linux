@@ -40,6 +40,8 @@ static void read_request_line(struct HTTPRequest *req, FILE *in);
 static struct HTTPHeaderField *read_header_field(FILE *in);
 static void upcase(char *str);
 static void free_request(struct HTTPRequest *req);
+static long content_length(struct HTTPRequest *req);
+static char *lookup_header_field_value(struct HTTPRequest *req, char *name);
 static void *xmalloc(size_t sz);
 static void log_exit(char *fmt, ...);
 
@@ -198,6 +200,29 @@ static void free_request(struct HTTPRequest *req)
 	free(req->path);
 	free(req->body);
 	free(req);
+}
+
+static long content_length(struct HTTPRequest *req)
+{
+	char *val;
+	long len;
+
+	val = lookup_header_field_value(req, "Content-Length");
+	if (val == NULL) return 0;
+	len = atol(val);
+	if (len < 0) log_exit("negative Content-Length value");
+	return len;
+}
+
+static char *lookup_header_field_value(struct HTTPRequest *req, char *name)
+{
+	struct HTTPHeaderField *h;
+
+	for (h = req->header; h; h = h->next) {
+		if (strcasecmp(h->name, name) == 0)
+			return h->value;
+	}
+	return NULL;
 }
 
 static void *xmalloc(size_t sz)
