@@ -37,6 +37,7 @@ static void signal_exit(int sig);
 static void service(FILE *in, FILE *out, char *docroot);
 static struct HTTPRequest *read_request(FILE *in);
 static void read_request_line(struct HTTPRequest *req, FILE *in);
+static struct HTTPHeaderField *read_header_field(FILE *in);
 static void upcase(char *str);
 static void free_request(struct HTTPRequest *req);
 static void *xmalloc(size_t sz);
@@ -140,6 +141,36 @@ static void read_request_line(struct HTTPRequest *req, FILE *in)
 		log_exit("parse error on request line (3): %s", buf);
 	p += strlen("HTTP/1.");
 	req->protocol_minor_version = atoi(p);
+}
+
+static struct HTTPHeaderField *read_header_field(FILE *in)
+{
+	struct HTTPHeaderField *h;
+	char buf[LINE_BUF_SIZE];
+	char *p;
+
+	if (fgets(buf, LINE_BUF_SIZE, in) == NULL)
+		log_exit("failed to read request header field: %s", strerror(errno));
+
+	/* 改行判定 */
+	if ((buf[0] == '\n') || (strcmp(buf, "\r\n") == 0))
+		return NULL;
+
+	/* name */
+	p = strchr(buf, ':');
+	if (p == NULL) log_exit("parse error on request field: %s", buf);
+	*p++ = '\0';
+	h = xmalloc(sizeof(struct HTTPHeaderField));
+	h->name = xmalloc(p - buf);
+	strcpy(h->name, buf);
+
+	/* value */
+	/* 先頭にある space or tab の文字だけポインタを進める */
+	p += strspn(p, " \t");
+	h->value = xmalloc(strlen(p) + 1);
+	strcpy(h->value, p);
+
+	return h;
 }
 
 static void upcase(char *str)
