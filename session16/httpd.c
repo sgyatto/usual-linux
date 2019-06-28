@@ -8,9 +8,11 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <fcntl.h>
 
 /* Constants ************************/
 
+#define BLOCK_BUF_SIZE 1024
 #define LINE_BUF_SIZE 4096
 #define MAX_REQUEST_BODY_LENGTH (1024 * 1024)
 
@@ -52,6 +54,7 @@ static void free_request(struct HTTPRequest *req);
 static long content_length(struct HTTPRequest *req);
 static char *lookup_header_field_value(struct HTTPRequest *req, char *name);
 static void respond_to(struct HTTPRequest *req, FILE *out, char *docroot);
+static void do_file_response(struct HTTPRequest *req, FILE *out, char *docroot);
 static struct FileInfo *get_fileinfo(char *docroot, char *urlpath);
 static char *build_fspath(char *docroot, char *urlpath);
 static void free_fileinfo(struct FileInfo *info);
@@ -249,6 +252,43 @@ static void respond_to(struct HTTPRequest *req, FILE *out, char *docroot)
 	} else {
 		not_implemented(req, out);
 	}
+}
+
+static void do_file_response(struct HTTPRequest *req, FILE *out, char *docroot)
+{
+	struct FileInfo *info;
+
+	info = get_fileinfo(docroot, req->path);
+	if (!info->ok) {
+		free_fileinfo(info);
+		not_found(req, out);
+		return;
+	}
+	output_common_header_fields(req, out, "200 OK");
+	fprintf(out, "Content-Length: %ld\r\n", info->size);
+	fprintf(out, "Content-Type: %s\r\n", guess_content_type(info));
+	fprintf(out, "\r\n");
+	if (strcmp(req->method, "HEAD") != 0) {
+		int fd;
+		char buf[BLOCK_BUF_SIZE];
+		ssize_t n;
+
+		fd = open(info->path, O_RDONLY);
+		if (fd < 0)
+			log_exit("failed to open %s: %s", info->path, strerror(errno));
+		for (;;) {
+			n = read(fd, buf, BLOCK_BUF_SIZE);
+			if (n < 0)
+				log_exit("failed to read %s: %s", info->path, strerror(errno));
+			if (n == 0)
+				break;
+			if (fwrite(buf, n, 1, out) < n)
+				log_exit("failed to write to socket: %s", strerror(errno));
+		}
+		close(fd);
+	}
+	fflush(out);
+	free_fileinfo(info);
 }
 
 static struct FileInfo *get_fileinfo(char *docroot, char *urlpath)
