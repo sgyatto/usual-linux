@@ -67,6 +67,7 @@ static void output_common_header_fields(struct HTTPRequest *req, FILE *out, char
 static struct FileInfo *get_fileinfo(char *docroot, char *urlpath);
 static char *build_fspath(char *docroot, char *urlpath);
 static void free_fileinfo(struct FileInfo *info);
+static char *guess_content_type(struct FileInfo *info);
 static void *xmalloc(size_t sz);
 static void log_exit(char *fmt, ...);
 
@@ -390,6 +391,11 @@ static void free_fileinfo(struct FileInfo *info)
 {
 	free(info->path);
 	free(info);
+}
+
+static char *guess_content_type(struct FileInfo *info)
+{
+	return "text/plain"; /* temporary */
 }
 
 static void *xmalloc(size_t sz)
