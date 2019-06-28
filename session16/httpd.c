@@ -9,9 +9,14 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <time.h>
 
 /* Constants ************************/
 
+#define SERVER_NAME "LittleHTTP"
+#define SERVER_VERSION "1.0"
+#define HTTP_MINOR_VERSION 0
+#define TIME_BUF_SIZE 64
 #define BLOCK_BUF_SIZE 1024
 #define LINE_BUF_SIZE 4096
 #define MAX_REQUEST_BODY_LENGTH (1024 * 1024)
@@ -55,6 +60,7 @@ static long content_length(struct HTTPRequest *req);
 static char *lookup_header_field_value(struct HTTPRequest *req, char *name);
 static void respond_to(struct HTTPRequest *req, FILE *out, char *docroot);
 static void do_file_response(struct HTTPRequest *req, FILE *out, char *docroot);
+static void output_common_header_fields(struct HTTPRequest *req, FILE *out, char *status);
 static struct FileInfo *get_fileinfo(char *docroot, char *urlpath);
 static char *build_fspath(char *docroot, char *urlpath);
 static void free_fileinfo(struct FileInfo *info);
@@ -289,6 +295,22 @@ static void do_file_response(struct HTTPRequest *req, FILE *out, char *docroot)
 	}
 	fflush(out);
 	free_fileinfo(info);
+}
+
+static void output_common_header_fields(struct HTTPRequest *req, FILE *out, char *status)
+{
+	time_t t;
+	struct tm *tm;
+	char buf[TIME_BUF_SIZE];
+
+	t = time(NULL);
+	tm = gmtime(&t);
+	if (tm == NULL) log_exit("gmtime() failed: %s", strerror(errno));
+	strftime(buf, TIME_BUF_SIZE, "%a, %d %b %Y %H:%M:%S GMT", tm);
+	fprintf(out, "HTTP/1.%d %s\r\n", HTTP_MINOR_VERSION, status);
+	fprintf(out, "Date: %s\r\n", buf);
+	fprintf(out, "Server: %s/%s\r\n", SERVER_NAME, SERVER_VERSION);
+	fprintf(out, "Connection: close\r\n");
 }
 
 static struct FileInfo *get_fileinfo(char *docroot, char *urlpath)
