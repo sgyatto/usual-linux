@@ -122,7 +122,7 @@ static struct HTTPRequest *read_request(FILE *in)
 	req = xmalloc(sizeof(struct HTTPRequest));
 	read_request_line(req, in);
 	req->header = NULL;
-	while (h = read_header_field(in)) {
+	while ((h = read_header_field(in)) != NULL) {
 		h->next = req->header;
 		req->header = h;
 	}
@@ -151,7 +151,7 @@ static void read_request_line(struct HTTPRequest *req, FILE *in)
 	/* method */
 	p = strchr(buf, ' '); 	/* 初めて半角スペースが出現した箇所のポインタを返す */
 	if (p == NULL) log_exit("parse error on request line (1): %s", buf);
-	*p++ += '\0';
+	*p++ = '\0';
 	req->method = xmalloc(p - buf);
 	strcpy(req->method, buf); /* '\0'までをコピー */
 	upcase(req->method);
@@ -160,7 +160,7 @@ static void read_request_line(struct HTTPRequest *req, FILE *in)
 	path = p;
 	p = strchr(p, ' ');
 	if (p == NULL) log_exit("parse error on request line (2): %s", buf);
-	*p++ += '\0';
+	*p++ = '\0';
 	req->path = xmalloc(p - path);
 	strcpy(req->path, path);
 
