@@ -13,6 +13,8 @@
 #define _GNU_SOURCE
 #include <getopt.h>
 #include <syslog.h>
+#include <sys/socket.h>
+#include <netdb.h>
 
 /* Constants ************************/
 
@@ -23,6 +25,7 @@
 #define BLOCK_BUF_SIZE 1024
 #define LINE_BUF_SIZE 4096
 #define MAX_REQUEST_BODY_LENGTH (1024 * 1024)
+#define MAX_BACKLOG 5
 
 /* Data Type Definitions ************/
 
@@ -53,6 +56,7 @@ typedef void (*sighandler_t)(int);
 static void install_signal_handlers(void);
 static void trap_signal(int sig, sighandler_t handler);
 static void signal_exit(int sig);
+static int listen_socket(char *port);
 static void service(FILE *in, FILE *out, char *docroot);
 static struct HTTPRequest *read_request(FILE *in);
 static void read_request_line(struct HTTPRequest *req, FILE *in);
@@ -167,6 +171,37 @@ static void trap_signal(int sig, sighandler_t handler)
 	act.sa_flags = SA_RESTART;
 	if (sigaction(sig, &act, NULL) < 0)
 		log_exit("sigaction() failed: %s", strerror(errno));
+}
+
+static int listen_socket(char *port)
+{
+	struct addrinfo hints, *res, *ai;
+	int err;
+
+	memset(&hints, 0, sizeof(struct addrinfo));
+	hints.ai_family = AF_INET;
+	hints.ai_socktype = SOCK_STREAM;
+	hints.ai_flags = AI_PASSIVE;
+	if ((err = getaddrinfo(NULL, port, &hints, &res) != 0))
+		log_exit(gai_strerror(err));
+	for (ai = res; ai; ai = ai->ai_next) {
+		int sock;
+
+		sock = socket(ai->ai_family, ai->ai_socktype, ai->ai_protocol);
+		if (sock < 0) continue;
+		if (bind(sock, ai->ai_addr, ai->ai_addrlen) < 0) {
+			close(sock);
+			continue;
+		}
+		if (listen(sock, MAX_BACKLOG) < 0) {
+			close(sock);
+			continue;
+		}
+		freeaddrinfo(res);
+		return sock;
+	}
+	log_exit("failed to listen socket");
+	return -1; /* NOT REACH */
 }
 
 static void signal_exit(int sig)
