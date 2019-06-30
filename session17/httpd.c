@@ -57,6 +57,7 @@ static void install_signal_handlers(void);
 static void trap_signal(int sig, sighandler_t handler);
 static void signal_exit(int sig);
 static int listen_socket(char *port);
+static void server_main(int server_fd, char *docroot);
 static void service(FILE *in, FILE *out, char *docroot);
 static struct HTTPRequest *read_request(FILE *in);
 static void read_request_line(struct HTTPRequest *req, FILE *in);
@@ -202,6 +203,30 @@ static int listen_socket(char *port)
 	}
 	log_exit("failed to listen socket");
 	return -1; /* NOT REACH */
+}
+
+static void server_main(int server_fd, char *docroot)
+{
+	for (;;) {
+		struct sockaddr_storage addr;
+		socklen_t addrlen = sizeof addr;
+		int sock;
+		int pid;
+
+		sock = accept(server_fd, (struct sockaddr*)&addr, &addrlen);
+		if (sock < 0) log_exit("accept(2) failed: %s", strerror(errno));
+		pid = fork();
+		if (pid < 0) exit(3);
+		if (pid == 0) { /* child */
+			FILE *inf = fdopen(sock, "r");
+			FILE *outf = fdopen(sock, "w");
+
+			service(inf, outf, docroot);
+			exit(0);
+		}
+		/* 親は接続済みソケットを閉じて次の接続へ */
+		close(sock);
+	}
 }
 
 static void signal_exit(int sig)
