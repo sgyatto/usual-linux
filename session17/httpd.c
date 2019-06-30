@@ -55,7 +55,9 @@ struct FileInfo {
 typedef void (*sighandler_t)(int);
 static void install_signal_handlers(void);
 static void trap_signal(int sig, sighandler_t handler);
+static void detach_children(void);
 static void signal_exit(int sig);
+static void noop_handler(int sig);
 static int listen_socket(char *port);
 static void server_main(int server_fd, char *docroot);
 static void service(FILE *in, FILE *out, char *docroot);
@@ -174,6 +176,28 @@ static void trap_signal(int sig, sighandler_t handler)
 		log_exit("sigaction() failed: %s", strerror(errno));
 }
 
+static void detach_children(void)
+{
+	struct sigaction act;
+
+	act.sa_handler = noop_handler; /* no operation */
+	sigemptyset(&act.sa_mask);
+	act.sa_flags = SA_RESTART | SA_NOCLDWAIT;
+	if (sigaction(SIGCHLD, &act, NULL) < 0) {
+		log_exit("sigaction() failed: %s", strerror(errno));
+	}
+}
+
+static void signal_exit(int sig)
+{
+	log_exit("exit by signal %d", sig);
+}
+
+static void noop_handler(int sig)
+{
+	;
+}
+
 static int listen_socket(char *port)
 {
 	struct addrinfo hints, *res, *ai;
@@ -227,11 +251,6 @@ static void server_main(int server_fd, char *docroot)
 		/* 親は接続済みソケットを閉じて次の接続へ */
 		close(sock);
 	}
-}
-
-static void signal_exit(int sig)
-{
-	log_exit("exit by signal %d", sig);
 }
 
 static void service(FILE *in, FILE *out, char *docroot)
