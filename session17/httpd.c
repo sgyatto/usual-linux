@@ -162,7 +162,8 @@ int main(int argc, char *argv[])
 
 static void install_signal_handlers(void)
 {
-	trap_signal(SIGPIPE, signal_exit);
+	trap_signal(SIGTERM, signal_exit);
+	detach_children();
 }
 
 static void trap_signal(int sig, sighandler_t handler)
