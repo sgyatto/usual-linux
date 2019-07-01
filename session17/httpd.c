@@ -53,6 +53,7 @@ struct FileInfo {
 /* Function Prototypes **************/
 
 typedef void (*sighandler_t)(int);
+static void become_daemon(void);
 static void install_signal_handlers(void);
 static void trap_signal(int sig, sighandler_t handler);
 static void detach_children(void);
@@ -158,6 +159,27 @@ int main(int argc, char *argv[])
 
 	server_main(server_fd, docroot);
 	exit(0);
+}
+
+static void become_daemon(void)
+{
+	int n;
+
+	/* root dir に移動 */
+	if (chdir("/") < 0)
+		log_exit("chdir(2) failed: %s", strerror(errno));
+
+	/* 標準入出力を/dev/nullにつなぐ */
+	freopen("/dev/null", "r", stdin);
+	freopen("/dev/null", "w", stdout);
+	freopen("/dev/null", "w", stderr);
+
+	/* 制御端末切り離し */
+	n = fork(); /* setsidは自身がプロセスグループリーダーだと失敗するので子を作る */
+	if (n < 0) log_exit("fork(2) failed: %s", strerror(errno));
+	if (n != 0) _exit(0); /* 親は終了。_exit()を使うのはfflush()対策 */
+	/* setsid()で生成するセッションは制御端末を持たない */
+	if (setsid() < 0) log_exit("setsid(2) failed: %s", strerror(errno));
 }
 
 static void install_signal_handlers(void)
