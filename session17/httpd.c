@@ -80,7 +80,7 @@ static char *build_fspath(char *docroot, char *urlpath);
 static void free_fileinfo(struct FileInfo *info);
 static char *guess_content_type(struct FileInfo *info);
 static void *xmalloc(size_t sz);
-static void log_exit(char *fmt, ...);
+static void log_exit(const char *fmt, ...);
 
 /* Functions ************************/
 
@@ -579,13 +579,18 @@ static void *xmalloc(size_t sz)
 	return p;
 }
 
-static void log_exit(char *fmt, ...)
+static void log_exit(const char *fmt, ...)
 {
 	va_list ap; /* 可変長引数用 */
 
 	va_start(ap, fmt);
-	vfprintf(stderr, fmt, ap);
-	fputc('\n', stderr);
+	if (debug_mode) {
+		/* debug_mode のときは標準エラー出力が使える*/
+		vfprintf(stderr, fmt, ap);
+		fputc('\n', stderr);
+	} else {
+		vsyslog(LOG_ERR, fmt, ap);
+	}
 	va_end(ap);
 	exit(1);
 }
