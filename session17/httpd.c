@@ -506,8 +506,8 @@ static void do_file_response(struct HTTPRequest *req, FILE *out, char *docroot)
 				log_exit("failed to read %s: %s", info->path, strerror(errno));
 			if (n == 0)
 				break;
-			if (fwrite(buf, n, 1, out) < n)
-				log_exit("failed to write to socket: %s", strerror(errno));
+			if (fwrite(buf, 1, n, out) < n)
+				log_exit("failed to write to socket");
 		}
 		close(fd);
 	}
