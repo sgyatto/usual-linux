@@ -15,6 +15,8 @@
 #include <syslog.h>
 #include <sys/socket.h>
 #include <netdb.h>
+#include <grp.h>
+#include <pwd.h>
 
 /* Constants ************************/
 
@@ -53,6 +55,7 @@ struct FileInfo {
 /* Function Prototypes **************/
 
 typedef void (*sighandler_t)(int);
+static void setup_environment(char *root, char *user, char *group);
 static void become_daemon(void);
 static void install_signal_handlers(void);
 static void trap_signal(int sig, sighandler_t handler);
@@ -159,6 +162,46 @@ int main(int argc, char *argv[])
 
 	server_main(server_fd, docroot);
 	exit(0);
+}
+
+static void setup_environment(char *root, char *user, char *group)
+{
+	struct passwd *pw;
+	struct group *gr;
+
+	if (user == NULL || group == NULL) {
+		fprintf(stderr, "use both of --user and --group\n");
+		exit(1);
+	}
+
+	/* 実グループID */
+	gr = getgrnam(group);
+	if (gr == NULL) {
+		fprintf(stderr, "no such group: %s\n", group);
+		exit(1);
+	}
+	if (setgid(gr->gr_gid) < 0) {
+		perror("setgid(2)");
+		exit(1);
+	}
+
+	/* 補助グループID */
+	if (initgroups(user, gr->gr_gid) < 0) {
+		perror("initgroups(2)");
+		exit(1);
+	}
+
+	/* 実ユーザID */
+	pw = getpwnam(user);
+	if (pw == NULL) {
+		fprintf(stderr, "no such user: %s\n", user);
+		exit(1);
+	}
+	chroot(root); /* root権限が必要 */
+	if (setuid(pw->pw_uid) < 0) {
+		perror("setuid(2)");
+		exit(1);
+	}
 }
 
 static void become_daemon(void)
